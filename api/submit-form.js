@@ -1,6 +1,7 @@
 // api/submit-form.js
 const { MongoClient } = require('mongodb');
 const sendgrid = require('@sendgrid/mail');
+const moment = require('moment-timezone');
 
 // Initialize SendGrid
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
@@ -41,12 +42,24 @@ module.exports = async (req, res) => {
     await submissions.insertOne(submission);
     console.log('Submission saved to MongoDB..');
 
+
+    // Get the current date in Eastern Time
+    const currentDate = moment().tz("America/New_York").format('DD MMMM YYYY, h:mm a');
+
     // Send Email via SendGrid
     const msg = {
       to: process.env.RECIPIENT_EMAIL,
-      from: process.env.SENDGRID_VERIFIED_SENDER, // Must be a verified sender in SendGrid
-      subject: 'New Insurance Estimate Submission',
-      text: `New submission:\nAge: ${age}\nSex: ${sex}\nEmail: ${email}\nComments: ${comments || 'N/A'}`,
+      from: process.env.SENDGRID_VERIFIED_SENDER,
+      subject: `New Insurance Quote Request from ${email}`,
+      text: `New quote request\nAge: ${age}\nSex: ${sex}\nEmail: ${email}\nComments: ${comments || 'N/A'}\nSubmitted on: ${currentDate}`,
+      html: `
+        <p><strong>New quote request</strong></p>
+        <p><strong>Age:</strong> ${age}</p>
+        <p><strong>Sex:</strong> ${sex}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Comments:</strong> ${comments || 'N/A'}</p>
+        <p><strong>Submitted on:</strong> ${currentDate}</p>
+      `,
     };
 
     await sendgrid.send(msg);
